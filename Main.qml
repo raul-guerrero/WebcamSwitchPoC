@@ -22,6 +22,10 @@ Window {
             cameraDevice: mediaDevices.defaultVideoInput
             active: true
         }
+        onCameraChanged: {
+            console.log("triggered onCameraChanged event")
+            captureSession.camera.start()
+        }
     }
 
     Item {
@@ -53,14 +57,14 @@ Window {
         textRole: "description"
         displayText: captureSession.camera.cameraDevice.description
         onActivated: function (index) {
-            if (previousCamera != null && previousCamera.active) {
-                previousCamera.stop()
+            if (previousCamera != null
+                    && previousCamera.cameraDevice.description !== mediaDevices.videoInputs[index].description) {
+                if (previousCamera.active) {
+                    previousCamera.stop()
+                }
+                captureSession.camera.cameraDevice = mediaDevices.videoInputs[index]
+                previousCamera = captureSession.camera
             }
-            videoOutput.visible = false
-            captureSession.camera.cameraDevice = mediaDevices.videoInputs[index]
-            previousCamera = captureSession.camera
-            videoOutput.visible = true
-            captureSession.camera.start()
         }
     }
 }
