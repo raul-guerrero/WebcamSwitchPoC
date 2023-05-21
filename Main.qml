@@ -4,12 +4,15 @@ import QtQuick.Controls
 import QtMultimedia
 
 Window {
+    id: mainWindow
     width: 800
     height: 600
     visible: true
     title: qsTr("Hello World")
 
     property Camera previousCamera: null
+    property CaptureSession previousCaptureSession: null
+    property VideoOutput previousVideoOutput: null
 
     MediaDevices {
         id: mediaDevices
@@ -23,12 +26,12 @@ Window {
             active: true
         }
         onCameraChanged: {
-            console.log("triggered onCameraChanged event")
-            captureSession.camera.start()
+            camera.active = true
         }
     }
 
     Item {
+        id: videoItem
         x: 20
         y: 20
         width: 640
@@ -49,21 +52,48 @@ Window {
         model: ListModel {
             Component.onCompleted: function() {
                 previousCamera = captureSession.camera
+                previousCaptureSession = captureSession
                 for (var i = 0; i < mediaDevices.videoInputs.length; i++) {
                     this.append({ description: mediaDevices.videoInputs[i].description })
                 }
             }
         }
         textRole: "description"
-        displayText: captureSession.camera.cameraDevice.description
+        displayText: previousCaptureSession.camera.cameraDevice.description
         onActivated: function (index) {
             if (previousCamera != null
                     && previousCamera.cameraDevice.description !== mediaDevices.videoInputs[index].description) {
                 if (previousCamera.active) {
                     previousCamera.stop()
                 }
-                captureSession.camera.cameraDevice = mediaDevices.videoInputs[index]
-                previousCamera = captureSession.camera
+                if (previousCaptureSession != null) {
+                    previousCaptureSession.destroy()
+                }
+                if (previousVideoOutput == null) {
+                    videoOutput.destroy()
+                } else {
+                    previousVideoOutput.destroy()
+                }
+                previousVideoOutput = Qt.createQmlObject(`
+                    import QtMultimedia
+                    VideoOutput {
+                        anchors.fill: parent
+                    }
+                `, videoItem, "vi")
+                previousCaptureSession = Qt.createQmlObject(`
+                    import QtMultimedia
+                    CaptureSession {
+                        camera: Camera {
+                            cameraDevice: mediaDevices.videoInputs[${index}]
+                            active: true
+                        }
+                        onCameraChanged: {
+                            camera.active = true
+                        }
+                    }
+                `, mainWindow, "cs")
+                previousCaptureSession.videoOutput = previousVideoOutput
+                previousCamera = previousCaptureSession.camera
             }
         }
     }
